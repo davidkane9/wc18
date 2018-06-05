@@ -1,7 +1,7 @@
 ---
 title: "Player Birthdays for World Cup 2018"
 author: "David Kane"
-date: `r today()`
+date: June 5, 2018
 output: html_document
 ---
 
@@ -14,4 +14,8 @@ library(rvest)
 The purpose of this essay is to examine the distribution of player birthdays among the teams at the 2018 FIFA World Cup.
 
 ## Download Player Data
+
+```{r}
+h <- read_html("https://en.wikipedia.org/wiki/2018_FIFA_World_Cup_squads")
+```
 
