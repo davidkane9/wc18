@@ -1,0 +1,17 @@
+---
+title: "Player Birthdays for World Cup 2018"
+author: "David Kane"
+date: `r today()`
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+```
+
+The purpose of this essay is to examine the distribution of player birthdays among the teams at the 2018 FIFA World Cup.
+
+## Download Player Data
+
