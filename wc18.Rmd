@@ -9,6 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(rvest)
+library(stringr)
+library(lubridate)
 ```
 
 The purpose of this essay is to examine the distribution of player birthdays among the teams at the 2018 FIFA World Cup.
@@ -16,6 +18,111 @@ The purpose of this essay is to examine the distribution of player birthdays amo
 ## Download Player Data
 
 ```{r}
-h <- read_html("https://en.wikipedia.org/wiki/2018_FIFA_World_Cup_squads")
+## Initial attempst to get everything. Did not work well.
+## .plainrowheaders a , .plainrowheaders , .plainrowheaders td
+## .plainrowheaders td , .plainrowheaders a
+## td:nth-child(1) a
+
+## Just birthdays. Works well.
+## .plainrowheaders td:nth-child(4)
+
+## Country names and other junk
+## .mw-headline
+
+
+## First, want a list of OECD countries. Need to change United Kingdom to England. Is
+## there a way to handle character vectors as part of a tidy pipeline?
+
+oecd <- read_html("https://en.wikipedia.org/wiki/OECD") %>% 
+  html_nodes("td:nth-child(1) a") %>% 
+  html_text()
+
+oecd <- oecd[80:114]
+oecd[34] <- "England"
+  
+
+html <- read_html("https://en.wikipedia.org/wiki/2018_FIFA_World_Cup_squads")
+
+names <- html_nodes(html, "th a") %>% 
+  html_text() %>% 
+  as_tibble() %>% 
+  filter(! str_detect(value, "^captain$")) %>% 
+  slice(1:736)
+
+
+## Raw text of birthdays, which also includes age as of the start of the
+## tournament.
+
+birth_days <- html_nodes(html, ".plainrowheaders td:nth-child(4)") %>% 
+  html_text()
+
+caps <- html_nodes(html, "td:nth-child(5)") %>% 
+  html_text()
+
+country <- html_nodes(html, ".mw-headline") %>% 
+  html_text() %>%
+  as_tibble() %>% 
+  filter(! str_detect(value, "Group")) %>% 
+  slice(1:32)
+
+x <- tibble(
+  name = names$value,
+  country = rep(country$value, each = 23),
+  oecd = ifelse(country %in% oecd, TRUE, FALSE),
+  europe = ifelse(country %in% c("Belgium", "Croatia", "Denmark",
+                                 "England", "France", "Germany",
+                                 "Iceland", "Poland", "Portugal",
+                                 "Russia", "Serbia", "Spain", 
+                                 "Sweden", "Switzerland"), TRUE, FALSE),
+  birth_day = ymd(str_sub(birth_days, 2, 11)),
+  quarter = quarter(birth_day),
+  age = as.numeric(str_sub(birth_days, -3, -2)),
+  birth_month = month(birth_day, label = TRUE),
+  caps = as.numeric(caps))
+  
+
 ```
+
+For the entire sample of 736 players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters.
+
+```{r}
+x  %>% ggplot(aes(x = birth_month)) + geom_histogram(stat = "count")
+```
+
+```{r}
+x  %>% ggplot(aes(x = quarter)) + geom_histogram(stat = "count") 
+```
+
+Strangely, the effect is only true for players who will be 25 and over at the start of the World Cup, about 75% of the sample.
+
+```{r}
+x %>% ggplot(aes(x = birth_month)) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(0, 24, 50)))
+```
+
+```{r}
+x %>% ggplot(aes(x = quarter)) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(0, 24, 50)))
+```
+Why would that be true? Maybe something to do with players being assigned to the U-23 team? You can see something weird going on for age 24 especially:
+
+```{r}
+plot(table(x$age))
+```
+
+Note how there are way fewer 23 year-olds than we might expect, given the big jump from 23 to 25? Does this connect to the somewhat strange distribution of birth quarters for players that are age 24?
+
+```{r}
+x  %>% filter(age == 24) %>% ggplot(aes(x = quarter)) + geom_histogram(stat = "count") 
+```
+It almost looks like there are a bunch of 24 year olds who were born in the first and fourth quarter who should be here but are not present for some reason. More likely, this is just random noise. Filtering for other individual ages yields similar non-constant distributions.
+
+Another thing is that I thought that it would be easy to see similar effects to the above if, instead of filtering by age, I were to filter by birth_day. This, of course, generates the same answers as long as you pick a date which matches the ages, which are calculated off the start of the tournament. So, you want to pick birth_day >= "1993-06-15" to get all the players that are 24 or younger.
+
+But then you need to be careful about, say, looking at all the players that are 24 and a half years ago or younger. When you do that, you are adding a bunch more players, all with birth_months in the 6 months before June. So, just changing "1993-06-15" to "1993-01-01" has a dramatic impact on the above bar charts.
+
+I keep thinking that there is something deeper here . . . Will there always be more players with birth months in the 6 months before a tournament --- regardless of when that tournament is --- then in the 6 months after the tournament? Not really but . . .
+
+Another thing of note is that, when running a chi-squared test --- and adding ages from low to high --- you have to get to 28 before it pops significant for birth quarter and to 31 for birth month. Not sure I am doing this right though . . .
+
+
+
 
