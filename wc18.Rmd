@@ -8,10 +8,8 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(rvest)
 library(stringr)
 library(lubridate)
-library(tabulizer)
 ```
 
 The purpose of this essay is to gather and explore data for the 736 players from the 32 teams at the 2018 FIFA World Cup. The tournament runs from June 14 through July 15 and is probably the most popular sporting event in the world.
@@ -21,6 +19,7 @@ The purpose of this essay is to gather and explore data for the 736 players from
 FIFA has made several official player lists available, conveniently (?) changing the format each time. For this exercise, I use the one from early June. The [tabulizer package](https://CRAN.R-project.org/package=tabulizer) makes extracting information from tables included in a PDF document relatively easy. 
 
 ```{r, warning=FALSE}
+library(tabulizer)
 url <- "https://github.com/davidkane9/wc18/raw/master/fifa_player_list_1.pdf"
 out <- extract_tables(url, output = "data.frame")
 ```
@@ -40,9 +39,13 @@ x <- bind_rows(out) %>%
          height = Height,
          weight = Weight) %>% 
   mutate(birth_date = dmy(birth_date),
-         league = str_sub(x$club, -4, -2),
+         league = str_sub(club, -4, -2),
          age = interval(birth_date, "2018-06-14") / years(1),
-         age_int = as.integer(floor(age)))
+         age_int = as.integer(floor(age))) %>% 
+  mutate(team = case_when(
+    team == "Korea Republic" ~ "South Korea",
+    team == "IR Iran" ~ "Iran",
+    TRUE ~ team))
 ```
 
 ```{r}
@@ -67,48 +70,22 @@ stopifnot(all(x$position %in%
 
 ```
 
-
+Wikipedia includes other player information which might be interesting, especially the number of caps for each player. A "cap" is an appearence in a game for the national team. The rvest package makes scraping data from Wikipedia fairly easy.
 
 ```{r}
-## Initial attempst to get everything. Did not work well.
-## .plainrowheaders a , .plainrowheaders , .plainrowheaders td
-## .plainrowheaders td , .plainrowheaders a
-## td:nth-child(1) a
-
-## Just birthdays. Works well.
-## .plainrowheaders td:nth-child(4)
-
-## Country names and other junk
-## .mw-headline
-
-
-## First, want a list of OECD countries. Need to change United Kingdom to England. Is
-## there a way to handle character vectors as part of a tidy pipeline?
-
-oecd <- read_html("https://en.wikipedia.org/wiki/OECD") %>% 
-  html_nodes("td:nth-child(1) a") %>% 
-  html_text()
-
-oecd <- oecd[80:114]
-oecd[34] <- "England"
-  
-
+library(rvest)
 html <- read_html("https://en.wikipedia.org/wiki/2018_FIFA_World_Cup_squads")
 
-names <- html_nodes(html, "th a") %>% 
+name <- html_nodes(html, "th a") %>% 
   html_text() %>% 
   as_tibble() %>% 
   filter(! str_detect(value, "^captain$")) %>% 
   slice(1:736)
 
-
-## Raw text of birthdays, which also includes age as of the start of the
-## tournament.
-
-birth_days <- html_nodes(html, ".plainrowheaders td:nth-child(4)") %>% 
+caps <- html_nodes(html, ".plainrowheaders td:nth-child(5)") %>% 
   html_text()
 
-caps <- html_nodes(html, "td:nth-child(5)") %>% 
+number <- html_nodes(html, ".plainrowheaders td:nth-child(1)") %>% 
   html_text()
 
 country <- html_nodes(html, ".mw-headline") %>% 
@@ -117,22 +94,16 @@ country <- html_nodes(html, ".mw-headline") %>%
   filter(! str_detect(value, "Group")) %>% 
   slice(1:32)
 
-x <- tibble(
-  name = names$value,
-  country = rep(country$value, each = 23),
-  oecd = ifelse(country %in% oecd, TRUE, FALSE),
-  europe = ifelse(country %in% c("Belgium", "Croatia", "Denmark",
-                                 "England", "France", "Germany",
-                                 "Iceland", "Poland", "Portugal",
-                                 "Russia", "Serbia", "Spain", 
-                                 "Sweden", "Switzerland"), TRUE, FALSE),
-  birth_day = ymd(str_sub(birth_days, 2, 11)),
-  quarter = quarter(birth_day),
-  age = as.numeric(str_sub(birth_days, -3, -2)),
-  birth_month = month(birth_day, label = TRUE),
+wiki_data <- tibble(
+  number = as.numeric(number),
+  name = name$value,
+  team = rep(country$value, each = 23),
   caps = as.numeric(caps))
-  
 
+## I prefer the name from Wikipedia. Exercise for the reader: How might we use
+## name and shirt_name to confirm that we have lined up the data correctly?
+  
+y <- left_join(select(x, -name), wiki_data, by = c("team", "number"))
 ```
 
 For the entire sample of 736 players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters.
@@ -142,28 +113,28 @@ x  %>% ggplot(aes(x = month(birth_date))) + geom_histogram(stat = "count")
 ```
 
 ```{r}
-x  %>% ggplot(aes(x = quarter)) + geom_histogram(stat = "count") 
+x  %>% ggplot(aes(x = quarter(birth_date))) + geom_histogram(stat = "count") 
 ```
 
 Strangely, the effect is only true for players who will be 25 and over at the start of the World Cup, about 75% of the sample.
 
 ```{r}
-x %>% ggplot(aes(x = birth_month)) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(0, 24, 50)))
+x %>% ggplot(aes(x = month(birth_date))) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(0, 24, 50)))
 ```
 
 ```{r}
-x %>% ggplot(aes(x = quarter)) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(0, 24, 50)))
+x %>% ggplot(aes(x = quarter(birth_date))) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(0, 24, 50)))
 ```
 Why would that be true? Maybe something to do with players being assigned to the U-23 team? You can see something weird going on for age 24 especially:
 
 ```{r}
-plot(table(x$age))
+plot(table(x$age_int))
 ```
 
-Note how there are way fewer 23 year-olds than we might expect, given the big jump from 23 to 25? Does this connect to the somewhat strange distribution of birth quarters for players that are age 24?
+Note how there are way fewer 24 year-olds than we might expect, given the big jump from 23 to 25? Does this connect to the somewhat strange distribution of birth quarters for players that are age 24?
 
 ```{r}
-x  %>% filter(age == 24) %>% ggplot(aes(x = quarter)) + geom_histogram(stat = "count") 
+x  %>% filter(age_int == 24) %>% ggplot(aes(x = quarter(birth_date))) + geom_histogram(stat = "count") 
 ```
 
 It almost looks like there are a bunch of 24 year olds who were born in the first and fourth quarter who should be here but are not present for some reason. More likely, this is just random noise. Filtering for other individual ages yields similar non-constant distributions.
