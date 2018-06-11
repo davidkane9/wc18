@@ -14,13 +14,20 @@ library(lubridate)
 library(tabulizer)
 ```
 
-The purpose of this essay is to gather and explore data for the 736 players from the 32 teams at the 2018 FIFA World Cup.
+The purpose of this essay is to gather and explore data for the 736 players from the 32 teams at the 2018 FIFA World Cup. The tournament runs from June 14 through July 15 and is probably the most popular sporting event in the world.
 
 ## Download Player Data
 
-```{r}
-url <- "https://tournament.fifadata.com/documents/FWC/2018/pdf/FWC_2018_SQUADLISTS.PDF"
+FIFA has made several official player lists available, conveniently (?) changing the format each time. For this exercise, I use the one from early June. The [tabulizer package](https://CRAN.R-project.org/package=tabulizer) makes extracting information from tables included in a PDF document relatively easy. 
+
+```{r, warning=FALSE}
+url <- "https://github.com/davidkane9/wc18/raw/master/fifa_player_list_1.pdf"
 out <- extract_tables(url, output = "data.frame")
+```
+
+We now have a 32 element list, each item a dataframe of information about the 23 players on each team. Let's combine this information into a single tidy tibble.
+
+```{r}
 x <- bind_rows(out) %>% 
   as_tibble() %>% 
   rename(team = Team,
@@ -33,10 +40,32 @@ x <- bind_rows(out) %>%
          height = Height,
          weight = Weight) %>% 
   mutate(birth_date = dmy(birth_date),
+         league = str_sub(x$club, -4, -2),
          age = interval(birth_date, "2018-06-14") / years(1),
          age_int = as.integer(floor(age)))
 ```
 
+```{r}
+set.seed(9)
+x %>% sample_n(10)
+```
+
+
+Perform some error checking.
+
+```{r}
+stopifnot(length(unique(x$team)) == 32)      # There are 32 teams.
+stopifnot(all(range(table(x$team)) == 23))   # Each team has 23 players.
+stopifnot(x %>% 
+            filter(position == "GK") %>% 
+            group_by(team) %>% 
+            tally() %>% 
+            filter(n != 3) %>% 
+            nrow() == 0)                     # All teams have 3 goal keepers.
+stopifnot(all(x$position %in% 
+                c("GK", "DF", "MF", "FW")))  # All players assigned to 1 of 4 positions.
+
+```
 
 
 
@@ -109,7 +138,7 @@ x <- tibble(
 For the entire sample of 736 players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters.
 
 ```{r}
-x  %>% ggplot(aes(x = birth_month)) + geom_histogram(stat = "count")
+x  %>% ggplot(aes(x = month(birth_date))) + geom_histogram(stat = "count")
 ```
 
 ```{r}
