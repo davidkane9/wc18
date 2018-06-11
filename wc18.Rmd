@@ -1,5 +1,5 @@
 ---
-title: "Player Birthdays for World Cup 2018"
+title: "Player Data for World Cup 2018"
 author: "David Kane"
 date: June 5, 2018
 output: html_document
@@ -11,11 +11,34 @@ library(tidyverse)
 library(rvest)
 library(stringr)
 library(lubridate)
+library(tabulizer)
 ```
 
-The purpose of this essay is to examine the distribution of player birthdays among the teams at the 2018 FIFA World Cup.
+The purpose of this essay is to gather and explore data for the 736 players from the 32 teams at the 2018 FIFA World Cup.
 
 ## Download Player Data
+
+```{r}
+url <- "https://tournament.fifadata.com/documents/FWC/2018/pdf/FWC_2018_SQUADLISTS.PDF"
+out <- extract_tables(url, output = "data.frame")
+x <- bind_rows(out) %>% 
+  as_tibble() %>% 
+  rename(team = Team,
+         number = X.,
+         position = Pos.,
+         name = FIFA.Popular.Name,
+         birth_date = Birth.Date,
+         shirt_name = Shirt.Name,
+         club = Club,
+         height = Height,
+         weight = Weight) %>% 
+  mutate(birth_date = dmy(birth_date),
+         age = interval(birth_date, "2018-06-14") / years(1),
+         age_int = as.integer(floor(age)))
+```
+
+
+
 
 ```{r}
 ## Initial attempst to get everything. Did not work well.
@@ -113,6 +136,7 @@ Note how there are way fewer 23 year-olds than we might expect, given the big ju
 ```{r}
 x  %>% filter(age == 24) %>% ggplot(aes(x = quarter)) + geom_histogram(stat = "count") 
 ```
+
 It almost looks like there are a bunch of 24 year olds who were born in the first and fourth quarter who should be here but are not present for some reason. More likely, this is just random noise. Filtering for other individual ages yields similar non-constant distributions.
 
 Another thing is that I thought that it would be easy to see similar effects to the above if, instead of filtering by age, I were to filter by birth_day. This, of course, generates the same answers as long as you pick a date which matches the ages, which are calculated off the start of the tournament. So, you want to pick birth_day >= "1993-06-15" to get all the players that are 24 or younger.
