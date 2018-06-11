@@ -1,5 +1,5 @@
 ---
-title: "Player Data for World Cup 2018"
+title: "Player Data for the 2018 FIFA World Cup"
 author: "David Kane"
 date: June 14, 2018
 output: html_document
@@ -16,7 +16,7 @@ The World Cup starts today! The purpose of this R Views is to gather and explore
 
 ## Download Player Data
 
-FIFA has made several official player lists available, (in)conveniently changing the format each time. For this exercise, I use the one from early June. The [tabulizer package](https://CRAN.R-project.org/package=tabulizer) makes extracting information from tables included in a PDF document relatively easy. 
+FIFA has made several official player lists available, (in)conveniently changing the format each time. For this exercise, I use the one from early June.[^1] The [tabulizer package](https://CRAN.R-project.org/package=tabulizer) makes extracting information from tables included in a PDF document relatively easy. 
 
 ```{r, warning=FALSE}
 # Note that I set warnings to FALSE because of some annoying (and intermittent)
@@ -170,13 +170,10 @@ plot(table(floor(x$age)))
 
 Note how there are way fewer 24 year-olds than we might expect, given the big jump from 23 to 25? 
 
-Another thing is that I thought that it would be easy to see similar effects to the above if, instead of filtering by age, I were to filter by birth_day. This, of course, generates the same answers as long as you pick a date which matches the ages, which are calculated off the start of the tournament. So, you want to pick birth_day >= "1993-06-15" to get all the players that are 24 or younger.
-
-But then you need to be careful about, say, looking at all the players that are 24 and a half years ago or younger. When you do that, you are adding a bunch more players, all with birth_months in the 6 months before June. So, just changing "1993-06-15" to "1993-01-01" has a dramatic impact on the above bar charts.
-
-I keep thinking that there is something deeper here . . . Will there always be more players with birth months in the 6 months before a tournament --- regardless of when that tournament is --- then in the 6 months after the tournament? Not really but . . .
 
 Another thing of note is that, when running a chi-squared test --- and adding ages from low to high --- you have to get to 28 before it pops significant for birth quarter and to 31 for birth month. Not sure I am doing this right though . . .
+
+[^1]: The other (later) version of the official PDF is [here](https://github.com/davidkane9/wc18/raw/master/fifa_player_list_1.pdf). Strangely, the weight variable has been dropped.
 
 
 
