@@ -183,16 +183,19 @@ x %>% ggplot(aes(x = month(birth_date, label = TRUE))) +
 ```{r, echo=FALSE}
 x %>% ggplot(aes(x = quarter(birth_date))) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(19, 24, 46)))
 ```
-Why would that be true? Maybe something to do with players being assigned to the U-23 team? You can see something weird going on for age 24 especially:
+
+Why would that be true? Note that there are many fewer players starting the tournament at age 24 than one might expect:
 
 ```{r, echo=FALSE}
-plot(table(floor(x$age)))
+x %>% ggplot(aes(floor(age))) + 
+  geom_bar() + 
+  scale_x_continuous(name = "Age on June 14, 2018", 
+                    breaks = c(20, 24, 30, 40)) +
+  ylab("Number of Players")
 ```
 
-Note how there are way fewer 24 year-olds than we might expect, given the big jump from 23 to 25? 
+Are the "missing" two dozen or so 24 year-olds a sign of something meaningful for random noise?
 
-
-Another thing of note is that, when running a chi-squared test --- and adding ages from low to high --- you have to get to 28 before it pops significant for birth quarter and to 31 for birth month. Not sure I am doing this right though . . .
 
 [^1]: The other (later) version of the official PDF is [here](https://github.com/davidkane9/wc18/raw/master/fifa_player_list_2.pdf). Strangely, the weight variable has been dropped.
 
