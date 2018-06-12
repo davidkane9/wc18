@@ -7,18 +7,22 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
-library(stringr)
-library(lubridate)
+options(width = 90)
 ```
 
 The World Cup starts today! The purpose of this R Views is to gather and explore data for the 736 players from the 32 teams at the 2018 FIFA World Cup. The tournament runs from June 14 through July 15 and is probably the most popular sporting event in the world.
 
 ## Download Player Data
 
+### Official PDF
+
 FIFA has made several official player lists available, (in)conveniently changing the format each time. For this exercise, I use the one from early June.[^1] The [tabulizer package](https://CRAN.R-project.org/package=tabulizer) makes extracting information from tables included in a PDF document relatively easy. 
 
 ```{r, warning=FALSE}
+suppressMessages(library(tidyverse))
+library(stringr)
+suppressMessages(library(lubridate))
+
 # Note that I set warnings to FALSE because of some annoying (and intermittent)
 # issues with RJavaTools.
 
@@ -58,7 +62,7 @@ pdf_data <- bind_rows(out) %>%
          TRUE ~ team)) %>% 
   
   # league and club should be separate variables. We also want birth_date to be
-  # a date and to have amn age variable already calculated.
+  # a date and to have an age variable already calculated.
   
   mutate(birth_date = dmy(birth_date),
          league = str_sub(club, -4, -2),
@@ -66,9 +70,11 @@ pdf_data <- bind_rows(out) %>%
          age = interval(birth_date, "2018-06-14") / years(1))
 ```
 
+Here is a sample of the data:
+
 ```{r}
 set.seed(9)
-pdf_data %>% sample_n(10)
+pdf_data %>% select(-name) %>% sample_n(10)
 ```
 
 
@@ -87,11 +93,12 @@ stopifnot(all(pdf_data$position %in%
                 c("GK", "DF", "MF", "FW")))  # All players assigned to 1 of 4 positions.
 
 ```
+### Wikipedia Data
 
 Wikipedia includes other player information which might be interesting, especially the number of caps for each player. A "cap" is an appearence in a game for the national team. The rvest package makes scraping data from Wikipedia fairly easy.
 
 ```{r}
-library(rvest)
+suppressMessages(library(rvest))
 html <- read_html("https://en.wikipedia.org/wiki/2018_FIFA_World_Cup_squads")
 
 # Once we have read in all the html, we need to identify the location of the
@@ -143,28 +150,42 @@ wiki_data <- tibble(
 x <- left_join(select(pdf_data, -name), wiki_data, by = c("team", "number"))
 ```
 
-For the entire sample of `r nrow(x)` players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters.
+## Data Exploration
 
-```{r}
-x  %>% ggplot(aes(x = month(birth_date, label = TRUE))) + geom_histogram(stat = "count")
+With this information, there are a variety of topics to explore.
+
+### Birth Month
+
+For the entire sample of `r nrow(x)` players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters. The most common explanation is that players born in January have an advantage over players born in December (when both are born in the same calendar year) because the former will be older than the later whenever they are competing for spots on the same age-group team, given that the cut-offs are always (?) December 31. This advantage in youth soccer bleeds into adult soccer because of the extra opportunities it provides for expert coaching.[^2] 
+
+```{r, echo=FALSE}
+x  %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
+  geom_bar() +
+  xlab("Birth Month") +
+  ylab("Number of Players")
 ```
 
-```{r}
-x  %>% ggplot(aes(x = quarter(birth_date))) + geom_histogram(stat = "count") 
+```{r, echo=FALSE}
+x  %>% ggplot(aes(x = quarter(birth_date))) + 
+  geom_bar() +
+  xlab("Birth Quarter") +
+  ylab("Number of Players")
 ```
 
 Strangely, the effect is only true for players who will be 25 and over at the start of the World Cup, about 75% of the sample.
 
-```{r}
-x %>% ggplot(aes(x = month(birth_date, label = TRUE))) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(0, 24, 50)))
+```{r, echo=FALSE}
+x %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
+  geom_bar() + 
+  facet_wrap(~ cut(age, breaks = c(19, 24, 46)))
 ```
 
-```{r}
-x %>% ggplot(aes(x = quarter(birth_date))) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(0, 24, 50)))
+```{r, echo=FALSE}
+x %>% ggplot(aes(x = quarter(birth_date))) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(19, 24, 46)))
 ```
 Why would that be true? Maybe something to do with players being assigned to the U-23 team? You can see something weird going on for age 24 especially:
 
-```{r}
+```{r, echo=FALSE}
 plot(table(floor(x$age)))
 ```
 
@@ -173,7 +194,9 @@ Note how there are way fewer 24 year-olds than we might expect, given the big ju
 
 Another thing of note is that, when running a chi-squared test --- and adding ages from low to high --- you have to get to 28 before it pops significant for birth quarter and to 31 for birth month. Not sure I am doing this right though . . .
 
-[^1]: The other (later) version of the official PDF is [here](https://github.com/davidkane9/wc18/raw/master/fifa_player_list_1.pdf). Strangely, the weight variable has been dropped.
+[^1]: The other (later) version of the official PDF is [here](https://github.com/davidkane9/wc18/raw/master/fifa_player_list_2.pdf). Strangely, the weight variable has been dropped.
+
+[^2]: "[A Star Is Made](https://www.nytimes.com/2006/05/07/magazine/07wwln_freak.html)," by Stephen J. Dubner and Steven D. Levitt, May 7, 2006, *New York Times Magazine*. 
 
 
 
