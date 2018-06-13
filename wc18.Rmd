@@ -156,7 +156,7 @@ With this information, there are a variety of topics to explore.
 
 ### Birth Month
 
-For the entire sample of `r nrow(x)` players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters. The most common explanation is that players born in January have an advantage over players born in December (when both are born in the same calendar year) because the former will be older than the later whenever they are competing for spots on the same age-group team, given that the cut-offs are always (?) December 31. This advantage in youth soccer bleeds into adult soccer because of the extra opportunities it provides for expert coaching. (See "[A Star Is Made](https://www.nytimes.com/2006/05/07/magazine/07wwln_freak.html)," by Stephen J. Dubner and Steven D. Levitt, May 7, 2006, *New York Times Magazine*.) 
+For the entire sample of `r nrow(x)` players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters. Players are much more likely to have birthdays earlier in the year. The most common explanation is that players born in January have an advantage over players born in December (when both are born in the same calendar year) because the former will be older than the later whenever they are competing for spots on the same age-group team, given that the cut-offs are always (?) December 31. This advantage in youth soccer bleeds into adult soccer because of the extra opportunities it provides for expert coaching. (See "[A Star Is Made](https://www.nytimes.com/2006/05/07/magazine/07wwln_freak.html)," by Stephen J. Dubner and Steven D. Levitt, May 7, 2006, *New York Times Magazine*.) 
 
 ```{r, echo=FALSE}
 p1 <- x %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
@@ -177,13 +177,17 @@ Strangely, the effect is only true for players who will be 25 and over at the st
 ```{r, echo=FALSE}
 p1 <- x %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
   geom_bar() + 
-  facet_wrap(~ cut(age, breaks = c(19, 24, 46))) +
+  facet_wrap(~ cut(floor(age), 
+                   breaks = c(18, 24, 47),
+                   labels = c("Age 24 and Younger", "Age 25 and Older"))) +
   scale_x_discrete("Birth Month", breaks = c("Jan", "Apr", "Jul", "Oct")) +
   ylab("Number of Players")
 
 p2 <- x %>% ggplot(aes(x = quarter(birth_date))) + 
   geom_bar() + 
-  facet_wrap(~ cut(age, breaks = c(19, 24, 46))) +
+  facet_wrap(~ cut(floor(age), 
+                   breaks = c(18, 24, 47),
+                   labels = c("Age 24 and Younger", "Age 25 and Older"))) +
   xlab("Birth Quarter") +
   ylab("Number of Players")
   
@@ -225,18 +229,11 @@ x %>%
   slice(c(1:8, 29:32))
 ```
 
-This measure captures the fact that teams like England, France, Spain and Germany are likely to do well while teams like Iran, Panama and Peru are not. Russia, as the host country, is a more difficult case. 
+This measure captures the fact that teams like England, France, Spain and Germany are likely to do well while teams like Iran, Panama and Peru are not. Russia, as the host country, is a more difficult case. There are many problems with this analysis. Feel free to point them out in the comments. A better approach would look at the quality of the clubs that individuals play for or, even better, at measures of individual player quality.
 
-There are several problems with this analysis:
+What can you do with this data?
 
-1. The league variable is at the country level and does not distinguish among different leagues within a given country. For example, in ENG, the best league (Premier League) is much better than the second tier (Championship League), but we don't know which applies for a given player.
-2. The measure is biased in favor of countries with elite leagues since they will find it easy to source most/all of their players from their "home" leagues. It is also biased toward teams from "nearby" countries.
-3. The measure is biased against countries with good (but note elite) leagues, which often have good players/teams. For example, one reason that Brazil is not ranked near the top is that it has two players who star for each of FC Shakhtar Donetsk and SC Corinthians, two good teams which play in a mediocre leagues (in Ukraine and Brazil).
-
-Better approach
-
-
-David Kane teaches at [Harvard University[(www.harvard.edu)] and co-organizes the [Boston R User Group](https://www.meetup.com/Boston-useR/).
+David Kane teaches at [Harvard University](https://www.harvard.edu) and co-organizes the [Boston R User Group](https://www.meetup.com/Boston-useR/).
 
 
 
