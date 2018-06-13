@@ -1,7 +1,5 @@
 ---
 title: "Player Data for the 2018 FIFA World Cup"
-author: "David Kane"
-date: June 14, 2018
 output: html_document
 ---
 
@@ -10,18 +8,20 @@ knitr::opts_chunk$set(echo = TRUE)
 options(width = 90)
 ```
 
-The World Cup starts today! The purpose of this R Views is to gather and explore data for the 736 players from the 32 teams at the 2018 FIFA World Cup. The tournament runs from June 14 through July 15 and is probably the most popular sporting event in the world.
+The World Cup starts today! The tournament which runs from June 14 through July 15 is probably the most popular sporting event in the world. if you are a soccer fan, you know that learning about the players and their teams and talking about it all with your friends greatly enhances the experience. In this post, I will show you how to gather and explore data for the 736 players from the 32 teams at the 2018 FIFA World Cup. Have fun and enjoy the games. I will be watching with you.
+
 
 ## Download Player Data
 
 ### Official PDF
 
-FIFA has made several official player lists available, (in)conveniently changing the format each time. For this exercise, I use the one from early June.[^1] The [tabulizer package](https://CRAN.R-project.org/package=tabulizer) makes extracting information from tables included in a PDF document relatively easy. 
+FIFA has made several official player lists available, (in)conveniently changing the format each time. For this exercise, I use the one from early June.[^1] The [tabulizer package](https://CRAN.R-project.org/package=tabulizer) makes extracting information from tables included in a PDF document relatively easy. (The other (later) version of the official PDF is [here](https://github.com/davidkane9/wc18/raw/master/fifa_player_list_2.pdf). Strangely, the weight variable has been dropped.)
 
 ```{r, warning=FALSE}
 suppressMessages(library(tidyverse))
 library(stringr)
 suppressMessages(library(lubridate))
+suppressMessages(library(cowplot))
 
 # Note that I set warnings to FALSE because of some annoying (and intermittent)
 # issues with RJavaTools.
@@ -31,7 +31,7 @@ url <- "https://github.com/davidkane9/wc18/raw/master/fifa_player_list_1.pdf"
 out <- extract_tables(url, output = "data.frame")
 ```
 
-We now have a 32 element list, each item a dataframe of information about the 23 players on each team. Let's combine this information into a single tidy tibble.
+We now have a 32 element list, each item a data frame of information about the 23 players on each team. Let's combine this information into a single tidy tibble.
 
 ```{r}
 # Note how bind_rows() makes it very easy to combine a list of compatible
@@ -72,7 +72,7 @@ pdf_data <- bind_rows(out) %>%
 
 Here is a sample of the data:
 
-```{r}
+```{r, echo=FALSE}
 set.seed(9)
 pdf_data %>% select(-name) %>% sample_n(10)
 ```
@@ -95,7 +95,7 @@ stopifnot(all(pdf_data$position %in%
 ```
 ### Wikipedia Data
 
-Wikipedia includes other player information which might be interesting, especially the number of caps for each player. A "cap" is an appearence in a game for the national team. The rvest package makes scraping data from Wikipedia fairly easy.
+Wikipedia includes other player information which might be interesting, especially the number of caps for each player. A "cap" is an appearance in a game for the national team. The [rvest package](https://CRAN.R-project.org/package=rvest) makes scraping data from Wikipedia fairly easy.
 
 ```{r}
 suppressMessages(library(rvest))
@@ -156,32 +156,39 @@ With this information, there are a variety of topics to explore.
 
 ### Birth Month
 
-For the entire sample of `r nrow(x)` players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters. The most common explanation is that players born in January have an advantage over players born in December (when both are born in the same calendar year) because the former will be older than the later whenever they are competing for spots on the same age-group team, given that the cut-offs are always (?) December 31. This advantage in youth soccer bleeds into adult soccer because of the extra opportunities it provides for expert coaching.[^2] 
+For the entire sample of `r nrow(x)` players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters. The most common explanation is that players born in January have an advantage over players born in December (when both are born in the same calendar year) because the former will be older than the later whenever they are competing for spots on the same age-group team, given that the cut-offs are always (?) December 31. This advantage in youth soccer bleeds into adult soccer because of the extra opportunities it provides for expert coaching. (See "[A Star Is Made](https://www.nytimes.com/2006/05/07/magazine/07wwln_freak.html)," by Stephen J. Dubner and Steven D. Levitt, May 7, 2006, *New York Times Magazine*.) 
 
 ```{r, echo=FALSE}
-x  %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
+p1 <- x %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
   geom_bar() +
-  xlab("Birth Month") +
+  scale_x_discrete("Birth Month", breaks = c("Jan", "Apr", "Jul", "Oct")) +
   ylab("Number of Players")
-```
 
-```{r, echo=FALSE}
-x  %>% ggplot(aes(x = quarter(birth_date))) + 
+p2 <- x %>% ggplot(aes(x = quarter(birth_date))) + 
   geom_bar() +
   xlab("Birth Quarter") +
-  ylab("Number of Players")
+  ylab(NULL)
+
+plot_grid(p1, p2, labels = NULL, align = "h")
 ```
 
 Strangely, the effect is only true for players who will be 25 and over at the start of the World Cup, about 75% of the sample.
 
 ```{r, echo=FALSE}
-x %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
+p1 <- x %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
   geom_bar() + 
-  facet_wrap(~ cut(age, breaks = c(19, 24, 46)))
-```
+  facet_wrap(~ cut(age, breaks = c(19, 24, 46))) +
+  scale_x_discrete("Birth Month", breaks = c("Jan", "Apr", "Jul", "Oct")) +
+  ylab("Number of Players")
 
-```{r, echo=FALSE}
-x %>% ggplot(aes(x = quarter(birth_date))) + geom_histogram(stat = "count") + facet_wrap(~ cut(age, breaks = c(19, 24, 46)))
+p2 <- x %>% ggplot(aes(x = quarter(birth_date))) + 
+  geom_bar() + 
+  facet_wrap(~ cut(age, breaks = c(19, 24, 46))) +
+  xlab("Birth Quarter") +
+  ylab("Number of Players")
+  
+
+plot_grid(p1, p2, ncol = 1, labels = NULL, align = "h")
 ```
 
 Why would that be true? Note that there are many fewer players starting the tournament at age 24 than one might expect:
@@ -194,12 +201,47 @@ x %>% ggplot(aes(floor(age))) +
   ylab("Number of Players")
 ```
 
-Are the "missing" two dozen or so 24 year-olds a sign of something meaningful for random noise?
+Are the "missing" score or so 24 year-olds a sign of something meaningful or random noise?
+
+### Team Quality
+
+We don't have good measures of player (or team) quality in this data. But we do know if an individual plays for a team in one of the countries which host the five highest quality leagues: England (ENG), Spain (ESP), Germany (GER), Italy (58) and France (49). (It is no coincidence that these leagues account for the largest share of the players.)
+
+```{r}
+x %>% 
+  group_by(league) %>% 
+  tally() %>% 
+  arrange(desc(n))
+```
+
+Any World Cup team with very few players who play in these 5 leagues is unlikely to be a good team. The best leagues have teams with so much money that they (almost) always are able to hire the best players. The vast majority of players in, for example, the Saudi Arabian or Turkish leagues are not wanted by any team in the best leagues. So, one measure of team quality is the percentage of players who play for teams in those 5 elite leagues. Here are the top 8 and bottom 4:
+
+```{r}
+x %>% 
+  group_by(team) %>% 
+  summarise(elite = mean(league %in% 
+                           c("ENG", "ESP", "GER", "ITA", "FRA"))) %>%
+  arrange(desc(elite)) %>% 
+  slice(c(1:8, 29:32))
+```
+
+This measure captures the fact that teams like England, France, Spain and Germany are likely to do well while teams like Iran, Panama and Peru are not. Russia, as the host country, is a more difficult case. 
+
+There are several problems with this analysis:
+
+1. The league variable is at the country level and does not distinguish among different leagues within a given country. For example, in ENG, the best league (Premier League) is much better than the second tier (Championship League), but we don't know which applies for a given player.
+2. The measure is biased in favor of countries with elite leagues since they will find it easy to source most/all of their players from their "home" leagues. It is also biased toward teams from "nearby" countries.
+3. The measure is biased against countries with good (but note elite) leagues, which often have good players/teams. For example, one reason that Brazil is not ranked near the top is that it has two players who star for each of FC Shakhtar Donetsk and SC Corinthians, two good teams which play in a mediocre leagues (in Ukraine and Brazil).
+
+Better approach
 
 
-[^1]: The other (later) version of the official PDF is [here](https://github.com/davidkane9/wc18/raw/master/fifa_player_list_2.pdf). Strangely, the weight variable has been dropped.
+David Kane teaches at [Harvard University[(www.harvard.edu)] and co-organizes the [Boston R User Group](https://www.meetup.com/Boston-useR/).
 
-[^2]: "[A Star Is Made](https://www.nytimes.com/2006/05/07/magazine/07wwln_freak.html)," by Stephen J. Dubner and Steven D. Levitt, May 7, 2006, *New York Times Magazine*. 
+
+
+
+
 
 
 
