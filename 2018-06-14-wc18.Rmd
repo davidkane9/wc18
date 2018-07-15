@@ -1,9 +1,11 @@
 ---
 title: "Player Data for the 2018 FIFA World Cup"
+author: David Kane
+date: June 14, 2018
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 options(width = 90)
 ```
@@ -72,7 +74,7 @@ pdf_data <- bind_rows(out) %>%
 
 Here is a sample of the data:
 
-```{r, echo=FALSE}
+```{r}
 set.seed(9)
 pdf_data %>% select(-name) %>% sample_n(10)
 ```
@@ -158,7 +160,7 @@ With this information, there are a variety of topics to explore.
 
 For the entire sample of `r nrow(x)` players, there is a clear birth month effect, visible both when looking at calendar months and when aggregating to calendar quarters. Players are much more likely to have birthdays earlier in the year. The most common explanation is that players born in January have an advantage over players born in December (when both are born in the same calendar year) because the former will be older than the later whenever they are competing for spots on the same age-group team, given that the cut-offs are always (?) December 31. This advantage in youth soccer bleeds into adult soccer because of the extra opportunities it provides for expert coaching. (See "[A Star Is Made](https://www.nytimes.com/2006/05/07/magazine/07wwln_freak.html)," by Stephen J. Dubner and Steven D. Levitt, May 7, 2006, *New York Times Magazine*.) 
 
-```{r, echo=FALSE}
+```{r}
 p1 <- x %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
   geom_bar() +
   scale_x_discrete("Birth Month", breaks = c("Jan", "Apr", "Jul", "Oct")) +
@@ -174,7 +176,7 @@ plot_grid(p1, p2, labels = NULL, align = "h")
 
 Strangely, the effect is only true for players who will be 25 and over at the start of the World Cup, about 75% of the sample.
 
-```{r, echo=FALSE}
+```{r}
 p1 <- x %>% ggplot(aes(x = month(birth_date, label = TRUE))) + 
   geom_bar() + 
   facet_wrap(~ cut(floor(age), 
@@ -197,7 +199,7 @@ plot_grid(p1, p2, ncol = 1, labels = NULL, align = "h")
 
 Why would that be true? Note that there are many fewer players starting the tournament at age 24 than one might expect:
 
-```{r, echo=FALSE}
+```{r}
 x %>% ggplot(aes(floor(age))) + 
   geom_bar() + 
   scale_x_continuous(name = "Age on June 14, 2018", 
