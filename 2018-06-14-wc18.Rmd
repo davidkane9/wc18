@@ -28,6 +28,19 @@ suppressMessages(library(cowplot))
 # Note that I set warnings to FALSE because of some annoying (and intermittent)
 # issues with RJavaTools.
 
+# Note also that anything which uses Java can create lots of difficulties,
+# especially after you have updated your operating system. For me (on a Mac),
+# this script stopped working after an upgrade until, following this advice:
+
+# https://github.com/rstudio/rstudio/issues/2750
+
+# I ran:
+
+# sudo ln -s $(/usr/libexec/java_home)/lib/server/libjvm.dylib /usr/local/lib
+
+# Annoying, but the more you practice these weird system skills, the better off
+# you will be. Key is to keep googling the error messages you get.
+
 library(tabulizer)
 url <- "https://github.com/davidkane9/wc18/raw/master/fifa_player_list_1.pdf"
 out <- extract_tables(url, output = "data.frame")
@@ -235,7 +248,7 @@ This measure captures the fact that teams like England, France, Spain and German
 
 What can you do with this data?
 
-David Kane teaches at [Harvard University](https://www.harvard.edu) and co-organizes the [Boston R User Group](https://www.meetup.com/Boston-useR/).
+*This article was first [published](https://rviews.rstudio.com/2018/06/14/player-data-for-the-2018-fifa-world-cup/) on [R Views](https://rviews.rstudio.com/). Thanks to Jonathan Regenstein for helpful comments.*
 
 
 
